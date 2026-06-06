@@ -5,22 +5,24 @@ import re
 
 import httpx
 
-from ..market import guess_market_prefix
+from ..market import guess_market_prefix, market_from_prefix
 from ..models import Holding
 
 F10 = "https://fundf10.eastmoney.com/FundArchivesDatas.aspx"
 HEADERS = {"User-Agent": "Mozilla/5.0", "Referer": "https://fundf10.eastmoney.com/"}
 _TIMEOUT = httpx.Timeout(8.0, connect=3.0)
 
-_ROW_CODE = re.compile(r"unify/r/(\d)\.(\w{5,6})")
+# href 前缀可达 3 位(116=港股/105=美股)；股票代码含美股字母代码(如 AAPL)。
+_ROW_CODE = re.compile(r"unify/r/(\d+)\.([A-Za-z0-9]{1,8})")
 _ROW_NAME = re.compile(r"class='tol'>\s*<a[^>]*>([^<]+)</a>")
 _ROW_WEIGHT = re.compile(r"<td class='tor'>([\d.]+)%</td>")
 _REPORT = re.compile(r"截止至：<font[^>]*>([\d-]+)</font>")
 
 
 async def fetch_holdings_eastmoney(code, client):
-    """直连东财 F10 解析前十大重仓股。href 里直接带 secid 前缀，无需猜市场。"""
-    params = {"type": "jjcc", "code": code, "topline": "10"}
+    """直连东财 F10 解析最新报告期【全部持仓】。href 里直接带 secid 前缀，
+    可识别 A股/港股/美股，无需猜市场。"""
+    params = {"type": "jjcc", "code": code, "topline": "200"}
     r = await client.get(F10, params=params, headers=HEADERS, timeout=_TIMEOUT)
     r.raise_for_status()
     text = r.text
@@ -38,15 +40,15 @@ async def fetch_holdings_eastmoney(code, client):
         prefix, scode = mc.group(1), mc.group(2)
         mn = _ROW_NAME.search(tr)
         name = mn.group(1).strip() if mn else scode
-        holdings.append(Holding(code=scode, name=name, market="A",
+        holdings.append(Holding(code=scode, name=name,
+                                market=market_from_prefix(prefix),
                                 market_prefix=prefix, weight=float(mw.group(1))))
-        if len(holdings) >= 10:
-            break
     return report_date, holdings
 
 
 def fetch_holdings_akshare(code):
-    """用 AKShare 拿持仓（同步，引擎里以 to_thread 调用）。取最新报告期前十大。"""
+    """用 AKShare 拿持仓（同步，引擎里以 to_thread 调用）。取最新报告期全部持仓。
+    注意：AKShare 返回的代码不带市场前缀，按沪深规则推断，仅适用 A股；港/美股请走东财直连。"""
     import akshare as ak
     from datetime import datetime
 
@@ -58,7 +60,6 @@ def fetch_holdings_akshare(code):
         return "", []
     if "季度" in df.columns:
         df = df[df["季度"] == df["季度"].iloc[0]]
-    df = df.head(10)
     holdings = []
     for _, row in df.iterrows():
         scode = str(row.get("股票代码")).zfill(6)
@@ -73,13 +74,15 @@ def fetch_holdings_akshare(code):
 
 
 async def fetch_holdings(code, client, source="auto"):
-    """返回 (report_date, [Holding])。auto: 先 AKShare，失败回退东财直连。"""
-    if source in ("auto", "akshare"):
+    """返回 (report_date, [Holding])。
+    auto: 先东财直连(带市场前缀，支持港/美股 + 全持仓)，失败回退 AKShare(仅A股)。"""
+    if source in ("auto", "eastmoney"):
         try:
-            rd, hs = await asyncio.to_thread(fetch_holdings_akshare, code)
+            rd, hs = await fetch_holdings_eastmoney(code, client)
             if hs:
                 return rd, hs
         except Exception:
-            if source == "akshare":
+            if source == "eastmoney":
                 raise
-    return await fetch_holdings_eastmoney(code, client)
+    rd, hs = await asyncio.to_thread(fetch_holdings_akshare, code)
+    return rd, hs

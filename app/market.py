@@ -19,6 +19,21 @@ def guess_market_prefix(code):
     return "1" if code[:1] in ("5", "6", "9") else "0"
 
 
+# 东财 push2 市场前缀 -> 显示标签（仅供展示，估值与标签无关）。
+_MARKET_MAP = {
+    "1": "A", "0": "A",                       # 沪 / 深·北
+    "116": "HK", "128": "HK",                 # 港股
+    "105": "US", "106": "US", "107": "US",    # 美股 NASDAQ/NYSE/AMEX
+    "153": "ADR",                             # 粉单 / ADR
+    "155": "UK",                              # 英股 / 欧股
+}
+
+
+def market_from_prefix(prefix):
+    """push2 secid 前缀 -> 市场标签。未知前缀归为"海外"（仍可正常取价估值）。"""
+    return _MARKET_MAP.get(str(prefix), "海外")
+
+
 def is_a_share_open(dt=None):
     dt = dt or now_sh()
     if dt.weekday() >= 5:  # 周末（节假日 v1 暂不处理）
