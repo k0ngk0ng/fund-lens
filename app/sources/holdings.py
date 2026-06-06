@@ -21,18 +21,8 @@ _ROW_WEIGHT = re.compile(r"<td[^>]*>([\d.]+)%</td>")
 _REPORT = re.compile(r"截止至：<font[^>]*>([\d-]+)</font>")
 
 
-async def fetch_holdings_eastmoney(code, client):
-    """直连东财 F10 解析最新报告期【全部持仓】。href 里直接带 secid 前缀，
-    可识别 A股/港股/美股，无需猜市场。"""
-    params = {"type": "jjcc", "code": code, "topline": "200"}
-    r = await client.get(F10, params=params, headers=HEADERS, timeout=_TIMEOUT)
-    r.raise_for_status()
-    text = r.text
-    m = _REPORT.search(text)
-    report_date = m.group(1) if m else ""
-    t0 = text.find("<table")
-    t1 = text.find("</table>", t0)
-    table = text[t0:t1] if t0 != -1 else text
+def _parse_table(table):
+    """从一个 <table> 里解析所有持仓行。"""
     holdings = []
     for tr in table.split("<tr>")[1:]:
         mc = _ROW_CODE.search(tr)
@@ -45,7 +35,53 @@ async def fetch_holdings_eastmoney(code, client):
         holdings.append(Holding(code=scode, name=name,
                                 market=market_from_prefix(prefix),
                                 market_prefix=prefix, weight=float(mw.group(1))))
-    return report_date, holdings
+    return holdings
+
+
+def _parse_periods(text):
+    """一次返回可能含多个报告期(boxitem)，逐个解析为 (report_date, [Holding])。"""
+    out = []
+    parts = _REPORT.split(text)            # [pre, date1, body1, date2, body2, ...]
+    for i in range(1, len(parts), 2):
+        rd = parts[i]
+        body = parts[i + 1] if i + 1 < len(parts) else ""
+        t0 = body.find("<table")
+        t1 = body.find("</table>", t0)
+        table = body[t0:t1] if t0 != -1 else ""
+        hs = _parse_table(table)
+        if hs:
+            out.append((rd, hs))
+    return out
+
+
+async def fetch_holdings_eastmoney(code, client):
+    """直连东财 F10 取【全部持仓】。href 带 secid 前缀，可识别 A股/港股/美股。
+
+    主动型基金季报仅披露前十大，全部持仓只在半年报(MM-DD=06-30)/年报(12-31)披露。
+    故统一回溯到最近一次半年报/年报，取其全部持仓；若两年内都没有，退而取持仓最多的一期。"""
+    from datetime import datetime
+
+    year = datetime.now().year
+    periods = []
+    for y in (year, year - 1):
+        try:
+            r = await client.get(F10, params={"type": "jjcc", "code": code,
+                                              "year": str(y), "topline": "200"},
+                                 headers=HEADERS, timeout=_TIMEOUT)
+            r.raise_for_status()
+            periods.extend(_parse_periods(r.text))
+        except Exception:
+            continue
+    if not periods:
+        return "", []
+    full = [p for p in periods if p[0].endswith("-06-30") or p[0].endswith("-12-31")]
+    if full:
+        full.sort(key=lambda p: p[0])               # 按日期升序
+        rd, holdings = full[-1]                       # 最近一次半年报/年报
+    else:
+        periods.sort(key=lambda p: (len(p[1]), p[0]))
+        rd, holdings = periods[-1]                    # 兜底：持仓最多且最新
+    return rd, holdings
 
 
 def fetch_holdings_akshare(code):

@@ -179,14 +179,14 @@ function renderCard(f) {
     `<span>昨净值 <b>${prevNav}</b></span>` +
     `<span>官方估 <b class="${cls(f.official_pct)}">${fmtPct(f.official_pct)}</b></span>` +
     `<span>覆盖度 <b>${(f.coverage || 0).toFixed(1)}%</b></span>` +
-    (f.report_date ? `<span>${f.report_date}</span>` : "");
+    (f.report_date ? `<span>报告期 ${f.report_date}</span>` : "");
   card.appendChild(sub);
 
   if (f.holdings && f.holdings.length) {
     const btn = document.createElement("button");
     btn.className = "expand-btn";
     const isOpen = expanded.has(f.code);
-    btn.textContent = isOpen ? "收起重仓 ▲" : "查看前十大重仓 ▼";
+    btn.textContent = isOpen ? "收起持仓 ▲" : "查看全部持仓 ▼";
     btn.onclick = () => {
       if (expanded.has(f.code)) expanded.delete(f.code);
       else expanded.add(f.code);
