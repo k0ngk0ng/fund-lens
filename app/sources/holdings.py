@@ -13,9 +13,11 @@ HEADERS = {"User-Agent": "Mozilla/5.0", "Referer": "https://fundf10.eastmoney.co
 _TIMEOUT = httpx.Timeout(8.0, connect=3.0)
 
 # href 前缀可达 3 位(116=港股/105=美股)；股票代码含美股字母代码(如 AAPL)。
+# A股行权重单元格用 class='tor'，QDII/海外行用 class='toc'，故权重正则放宽到任意 <td>。
+# 每行内 unify/r 链接依次为：代码、名称、行情；取第二个的文本作为股票名称。
 _ROW_CODE = re.compile(r"unify/r/(\d+)\.([A-Za-z0-9]{1,8})")
-_ROW_NAME = re.compile(r"class='tol'>\s*<a[^>]*>([^<]+)</a>")
-_ROW_WEIGHT = re.compile(r"<td class='tor'>([\d.]+)%</td>")
+_ROW_LINKS = re.compile(r"unify/r/\d+\.[A-Za-z0-9]{1,8}'?\s*>([^<]+)</a>")
+_ROW_WEIGHT = re.compile(r"<td[^>]*>([\d.]+)%</td>")
 _REPORT = re.compile(r"截止至：<font[^>]*>([\d-]+)</font>")
 
 
@@ -38,8 +40,8 @@ async def fetch_holdings_eastmoney(code, client):
         if not (mc and mw):
             continue
         prefix, scode = mc.group(1), mc.group(2)
-        mn = _ROW_NAME.search(tr)
-        name = mn.group(1).strip() if mn else scode
+        texts = _ROW_LINKS.findall(tr)
+        name = texts[1].strip() if len(texts) >= 2 else scode
         holdings.append(Holding(code=scode, name=name,
                                 market=market_from_prefix(prefix),
                                 market_prefix=prefix, weight=float(mw.group(1))))
