@@ -12,6 +12,9 @@ class Holding:
     weight: float = 0.0        # 占净值比例 %
     price: float | None = None
     change_pct: float | None = None
+    # 美股盘后/盘前（仅展示，不参与估值；QDII 净值按正常时段收盘结算）
+    ah_price: float | None = None
+    ah_change_pct: float | None = None
 
     @property
     def secid(self) -> str:
@@ -25,6 +28,8 @@ class Holding:
             "weight": self.weight,
             "price": self.price,
             "change_pct": self.change_pct,
+            "ah_price": self.ah_price,
+            "ah_change_pct": self.ah_change_pct,
         }
 
 

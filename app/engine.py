@@ -9,7 +9,13 @@ from .market import is_a_share_open, now_sh
 from .models import FundSnapshot
 from .sources.holdings import fetch_holdings
 from .sources.official import fetch_official
-from .sources.quotes import fetch_quotes
+from .sources.quotes import fetch_after_hours, fetch_quotes
+
+_US_PREFIXES = ("105", "106", "107")  # 美股 NASDAQ/NYSE/AMEX，有盘前盘后
+
+
+def _us_secids(hs):
+    return [h.secid for h in hs if h.market_prefix in _US_PREFIXES]
 
 
 class Engine:
@@ -102,8 +108,15 @@ class Engine:
         except Exception:
             quotes = {}
 
+        us_secids = [s for s in secids if s.split(".")[0] in _US_PREFIXES]
+        try:
+            after_hours = await fetch_after_hours(us_secids, self.client)
+        except Exception:
+            after_hours = {}
+
         now_iso = now_sh().strftime("%Y-%m-%d %H:%M:%S")
-        await asyncio.gather(*(self._compute_fund(c, quotes, now_iso) for c in codes))
+        await asyncio.gather(*(self._compute_fund(c, quotes, now_iso, after_hours)
+                               for c in codes))
 
         self.market_open = is_a_share_open()
         self.server_time = now_iso
@@ -123,11 +136,16 @@ class Engine:
             quotes = await fetch_quotes([h.secid for h in hs], self.client)
         except Exception:
             quotes = {}
+        try:
+            after_hours = await fetch_after_hours(_us_secids(hs), self.client)
+        except Exception:
+            after_hours = {}
         now_iso = now_sh().strftime("%Y-%m-%d %H:%M:%S")
-        await self._compute_fund(code, quotes, now_iso)
+        await self._compute_fund(code, quotes, now_iso, after_hours)
         self._broadcast()
 
-    async def _compute_fund(self, code, quotes, now_iso):
+    async def _compute_fund(self, code, quotes, now_iso, after_hours=None):
+        after_hours = after_hours or {}
         rd, hs = self.holdings.get(code, ("", []))
         snap = self.snapshots.get(code) or FundSnapshot(code=code)
         snap.report_date = rd
@@ -138,6 +156,10 @@ class Engine:
             if q:
                 h.price = q.get("price")
                 h.change_pct = q.get("change_pct")
+            ah = after_hours.get(h.code)
+            if ah:
+                h.ah_price = ah.get("ah_price")
+                h.ah_change_pct = ah.get("ah_change_pct")
             cov += h.weight
             if h.change_pct is not None:
                 num += h.weight * h.change_pct

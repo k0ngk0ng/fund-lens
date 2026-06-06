@@ -200,10 +200,14 @@ function renderCard(f) {
       for (const h of f.holdings) {
         const row = document.createElement("div");
         row.className = "hold-row";
+        const ah = (h.ah_change_pct !== null && h.ah_change_pct !== undefined)
+          ? `<span class="h-ah ${cls(h.ah_change_pct)}">盘后 ${fmtPct(h.ah_change_pct)}</span>`
+          : "";
         row.innerHTML =
           `<span class="h-name">${esc(h.name)}</span>` +
           `<span class="h-w">${(h.weight || 0).toFixed(2)}%</span>` +
-          `<span class="h-c ${cls(h.change_pct)}">${fmtPct(h.change_pct)}</span>`;
+          `<span class="h-c ${cls(h.change_pct)}">${fmtPct(h.change_pct)}</span>` +
+          ah;
         box.appendChild(row);
       }
       card.appendChild(box);

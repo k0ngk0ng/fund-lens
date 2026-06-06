@@ -83,12 +83,13 @@ button { font-family: inherit; cursor: pointer; }
 }
 .holdings { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 8px; }
 .hold-row {
-  display: grid; grid-template-columns: 1fr auto auto; gap: 10px;
+  display: grid; grid-template-columns: 1fr auto auto auto; gap: 10px;
   padding: 6px 0; font-size: 13px; align-items: center;
 }
 .hold-row .h-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hold-row .h-w { color: var(--muted); font-variant-numeric: tabular-nums; }
 .hold-row .h-c { font-variant-numeric: tabular-nums; min-width: 64px; text-align: right; }
+.hold-row .h-ah { font-variant-numeric: tabular-nums; font-size: 11px; opacity: 0.85; min-width: 76px; text-align: right; }
 
 .empty { color: var(--muted); text-align: center; padding: 60px 20px; font-size: 14px; }
 .disclaimer { color: var(--muted); font-size: 11px; text-align: center; margin-top: 24px; line-height: 1.6; }
