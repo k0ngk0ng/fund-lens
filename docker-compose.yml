@@ -1,0 +1,17 @@
+services:
+  fund-lens:
+    build: .
+    container_name: fund-lens
+    ports:
+      - "${PORT:-8000}:8000"
+    env_file:
+      - .env                                 # 所有配置/密钥在 .env 里（不进版本库/镜像）
+    volumes:
+      - ./funds.yaml:/app/funds.yaml:ro     # 改目录池不必重新构建
+      - ./data:/app/data                     # SQLite + 缓存持久化
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

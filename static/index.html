@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f1115" />
+  <title>基金估值 · Fund Lens</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <!-- 登录视图 -->
+  <section id="login" class="login hidden">
+    <form id="login-form" class="login-card">
+      <h1>基金估值</h1>
+      <p class="sub">登录后查看你关注的基金盘中估值</p>
+      <input id="username" type="text" placeholder="用户名" autocomplete="username" />
+      <input id="password" type="password" placeholder="密码" autocomplete="current-password" />
+      <button type="submit">登录</button>
+      <div id="login-err" class="err"></div>
+    </form>
+  </section>
+
+  <!-- 主视图 -->
+  <section id="app" class="app hidden">
+    <header class="topbar">
+      <div class="status">
+        <span id="market-dot" class="dot"></span>
+        <span id="market-text">连接中…</span>
+      </div>
+      <div class="actions">
+        <button id="edit-btn" class="ghost" title="管理关注">＋关注</button>
+        <button id="logout-btn" class="ghost" title="退出">退出</button>
+      </div>
+    </header>
+    <div id="updated" class="updated"></div>
+    <main id="cards" class="cards"></main>
+    <div id="empty" class="empty hidden">
+      还没有关注的基金，点右上角 <b>＋关注</b> 添加。
+    </div>
+    <footer class="disclaimer">
+      估值基于季报前十大重仓股加权估算，仅供参考，非基金真实净值，不构成投资建议。
+    </footer>
+  </section>
+
+  <!-- 关注管理弹层 -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <span>管理关注</span>
+        <button id="modal-close" class="ghost">完成</button>
+      </div>
+      <form id="add-form" class="add-bar">
+        <input id="add-code" type="text" inputmode="numeric" maxlength="6" placeholder="输入 6 位基金代码添加" />
+        <button type="submit">添加</button>
+      </form>
+      <div id="add-err" class="err"></div>
+      <div id="catalog" class="catalog"></div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

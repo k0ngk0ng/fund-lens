@@ -1,0 +1,18 @@
+# 基金目录池：用户登录后从这里勾选关注。改这里增删可选基金。
+refresh_interval_seconds: 10      # 盘中刷新间隔（秒）
+idle_interval_seconds: 300        # 非交易时段刷新间隔（秒）
+valuation_method: normalized      # normalized(按重仓等比例放大) | raw(保守低估)
+color_scheme: cn                  # cn(红涨绿跌) | intl(绿涨红跌)
+holdings_source: auto             # auto(先AKShare回退东财) | akshare | eastmoney
+markets:
+  a_share: true                   # A股
+  hk: false                       # 港股（预留，默认关）
+  us: false                       # 美股（预留，默认关）
+
+funds:
+  - "000001"   # 华夏成长混合
+  - "110011"   # 易方达优质精选混合
+  - "005827"   # 易方达蓝筹精选混合
+  - "161725"   # 招商中证白酒指数
+  - "001632"   # 天弘中证食品饮料指数
+  - "320007"   # 诺安成长混合

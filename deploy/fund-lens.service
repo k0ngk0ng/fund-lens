@@ -1,0 +1,19 @@
+[Unit]
+Description=Fund Lens - 基金盘中估值实时看板
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# 按实际部署目录修改（install-systemd.sh 会自动替换为当前目录）
+WorkingDirectory=/opt/fund-lens
+EnvironmentFile=/opt/fund-lens/.env
+ExecStart=/opt/fund-lens/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port ${PORT}
+Restart=always
+RestartSec=3
+# 建议用非 root 专用账号运行
+User=fundlens
+Group=fundlens
+
+[Install]
+WantedBy=multi-user.target
